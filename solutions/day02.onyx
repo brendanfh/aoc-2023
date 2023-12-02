@@ -1,0 +1,72 @@
+use core {*}
+
+Game :: struct {
+    id: i32;
+    draws: [..] Draw;
+}
+
+Draw :: struct {
+    red: i32;
+    green: i32;
+    blue: i32;
+}
+
+main :: () {
+    games: [..] Game;
+
+    for line: os.get_contents("inputs/day02.txt")
+           |> string.split_iter("\n")
+    {
+        string.advance(&line, 5);
+        game_number := conv.parse_int(&line);
+        string.advance(&line, 2);
+
+        game: Game;
+        game.id = ~~game_number;
+
+        for game_str: string.split_iter(line, "; ") {
+            draw: Draw;
+
+            for turn: string.split_iter(game_str, ", ") {
+                count_str, color := string.bisect(turn, " ");
+                count := conv.parse_int(count_str);
+
+                switch color {
+                    case "red"   do draw.red = ~~count;
+                    case "green" do draw.green = ~~count;
+                    case "blue"  do draw.blue = ~~count;
+                }
+            }
+
+            game.draws << draw;
+        }
+
+        games << game;
+    }
+
+    // Part 1
+    iter.as_iter(games)
+    |> iter.filter(g =>
+        iter.every(g.draws, (d: &Draw) =>
+            d.red <= 12 &&
+            d.green <= 13 &&
+            d.blue <= 14
+        )
+    )
+    |> iter.fold(0, (g, a) => a + g.id)
+    |> println();
+
+    // Part 2
+    iter.as_iter(games)
+    |> iter.map(g => 
+        iter.fold(g.draws, Draw.{}, (d: &Draw, a: Draw) => Draw.{
+            red = math.max(d.red, a.red),
+            green = math.max(d.green, a.green),
+            blue = math.max(d.blue, a.blue),
+        })
+    )
+    |> iter.fold(0, (max_draw, a) =>
+        a + max_draw.red * max_draw.green * max_draw.blue
+    )
+    |> println();
+}

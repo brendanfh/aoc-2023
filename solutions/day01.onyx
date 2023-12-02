@@ -1,0 +1,56 @@
+use core {*}
+
+main :: () do
+    os.get_contents("inputs/day01.txt")
+    |> string.split_iter("\n")
+    // |> iter.map(line => iter.as_iter(line)
+    //     |> iter.filter(x => x->is_num())
+    //     |> iter.collect())
+    // |> iter.map(x => cast(i32) conv.parse_int(u8.[x[0], x[x.length - 1]]))
+    |> iter.map(scanner)
+    |> iter.fold(0, (x, y) => x + y)
+    |> println();
+
+scanner :: (x: str) -> i32 {
+    first: ? i32 = .None;
+    last: ? i32 = .None;
+
+    s := x;
+    while !string.empty(s) {
+        check("one", 1);
+        check("two", 2);
+        check("three", 3);
+        check("four", 4);
+        check("five", 5);
+        check("six", 6);
+        check("seven", 7);
+        check("eight", 8);
+        check("nine", 9);
+        check("zero", 0);
+
+        check("1", 1);
+        check("2", 2);
+        check("3", 3);
+        check("4", 4);
+        check("5", 5);
+        check("6", 6);
+        check("7", 7);
+        check("8", 8);
+        check("9", 9);
+        check("0", 0);
+
+        string.advance(&s);
+    }
+
+    return first->unwrap() * 10 + (last ?? first->unwrap());
+
+    check :: macro (value: str, num: i32) {
+        if string.starts_with(s, value) {
+            if first == .None {
+                first = num;
+            } else {
+                last = num;
+            }
+        }
+    }
+}
