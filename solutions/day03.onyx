@@ -1,0 +1,95 @@
+use core {*}
+
+#overload
+hash.hash :: (arr: [$N] $T/hash.Hashable) -> i32 {
+    h := 5381;
+    for arr {
+        h *= 33;
+        h += hash.hash(it);
+    }
+    return h;
+}
+
+#operator == (arr1, arr2: [$N] $T) -> bool {
+    for i: N {
+        if arr1[i] != arr2[i] do return false;
+    }
+
+    return true;
+}
+
+main :: () {
+    gears: Map([2] i32, [..] i32);
+
+    board := os.get_contents("./inputs/day03.txt")
+        |> string.split_iter("\n")
+        |> iter.collect();
+
+    sum := 0;
+    for y: board.length {
+        for x: board[y].length {
+            if !board[y][x]->is_num() do continue;
+
+            is_gear := false;
+            gear_pos: [2] i32;
+
+            include := do {
+                for yy: -1 .. 2 {
+                    for xx: -1 .. 2 {
+                        if x + xx < 0 || y + yy < 0 || x + xx >= board[y].length || y + yy >= board.length do continue;
+
+                        c := board[yy+y][xx+x];
+                        if c->is_num() do continue;
+                        if c == '.' do continue;
+
+                        if c == '*' {
+                            is_gear = true;
+                            gear_pos = .[x + xx, y + yy];
+                        }
+
+                        return true;
+                    }
+                }
+
+                return false;
+            };
+
+            if include {
+                start := x;
+                while start >= 0 && board[y][start]->is_num() {
+                    start -= 1;
+                }
+
+                start += 1;
+
+                length := 0;
+                for xx: start .. board[y].length {
+                    if !board[y][xx]->is_num() do break;
+                    length += 1;
+                }
+
+                value := cast(i32) conv.parse_int(board[y][start .. start + length]);
+
+                for xx: start .. start + length {
+                    board[y][xx] = '.';
+                }
+
+                if is_gear {
+                    numbers := gears->get_ptr_or_create(gear_pos);
+                    array.push(numbers, value);
+                }
+
+                sum += value;
+            }
+        }
+    }
+
+    println(sum);
+
+    iter.as_iter(gears)
+    |> iter.map(x => x.value)
+    |> iter.filter(x => x.length == 2)
+    |> iter.map(x => cast(u64) (x[0] * x[1]))
+    |> iter.fold(cast(u64) 0, (x, y) => x + y)
+    |> println();
+}
