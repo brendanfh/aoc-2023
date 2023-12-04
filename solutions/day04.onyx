@@ -1,0 +1,52 @@
+use core {*}
+
+main :: () {
+    card_counts: Map(i32, i32); // Card number to count
+
+    total := 0;
+
+    for line: os.get_contents("inputs/day04.txt")
+            |> string.split_iter("\n")
+    {
+        string.advance(&line, "Card ".count);
+        card_number: i32 = ~~conv.parse_int(&line);
+        string.advance(&line, ": ".count);
+
+        card_count_ref := card_counts->get_ptr_or_create(card_number);
+        *card_count_ref += 1;
+
+        win_string, has_string := string.bisect(line, "|");
+        win_numbers := string.split_iter(win_string, ' ')
+                    |> iter.filter(x => !string.empty(x))
+                    |> iter.map(x => conv.parse_int(x))
+                    |> iter.collect();
+
+        has_numbers := string.split_iter(has_string, ' ')
+                    |> iter.filter(x => !string.empty(x))
+                    |> iter.map(x => conv.parse_int(x))
+                    |> iter.collect();
+
+        value := 0;
+        matched := 0;
+        for win_numbers {
+            if array.contains(has_numbers, it) {
+                matched += 1;
+
+                if value == 0 do value = 1;
+                else          do value *= 2;
+            }
+        }
+
+        count := *card_count_ref;
+        for card_number + 1 .. card_number + 1 + matched {
+            *card_counts->get_ptr_or_create(it) += count;
+        }
+
+        total += value;
+    }
+
+    total_cards := card_counts->as_iter()->map(x => x.value)->fold(0, (x, y) => x + y);
+
+    printf("Part 1: {}\n", total);
+    printf("Part 2: {}\n", total_cards);
+}
