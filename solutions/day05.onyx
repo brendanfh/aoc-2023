@@ -1,0 +1,107 @@
+use core {*}
+
+DO_PART_2 :: false
+
+Mapping :: struct {
+    rules: [..] Rule;
+}
+
+Rule :: struct {
+    offset: i64;
+    start: i64;
+    end: i64;
+}
+
+split_into_ints :: (s: str) -> [] i64 {
+    return string.split_iter(s, " ")->map(x => conv.parse_int(x))->collect();
+}
+
+apply_mappings :: (n: i64, mappings: [] Mapping) -> i64 {
+    res := n;
+
+    for m: mappings {
+        for r: m.rules {
+            if r.start <= res && res < r.end {
+                res += r.offset;
+                continue continue;
+            }
+        }
+    }
+
+    return res;
+}
+
+i64_range :: (start, end: i64) -> Iterator(i64) {
+    return iter.generator(
+        &.{ end = end, i = start },
+        (ctx: $Ctx) -> (i64, bool) {
+            if ctx.i >= ctx.end do return .{}, false;
+
+            defer ctx.i += 1;
+            return ctx.i, true;
+        }
+    );
+}
+
+group :: (it: Iterator($T), $N: i32) -> Iterator([N] T) {
+    return iter.generator(
+        &.{ iterator = it },
+        (ctx: $Ctx) -> ([N] T, bool) {
+            res: [N] T;
+            for N {
+                cont: bool;
+                res[it], cont = iter.next(ctx.iterator);
+                if !cont {
+                    return res, false;
+                }
+            }
+
+            return res, true;
+        }
+    );
+}
+
+main :: () {
+    sections := os.get_contents("inputs/day05.txt")
+             |> string.split_iter("\n\n")
+             |> iter.collect();
+
+    seeds := sections[0]
+        |> string.advance("seeds: ".count)
+        |> split_into_ints();
+    
+    linear_mappings: [..] Mapping;
+    for section_str: sections[1..sections.length] {
+        lines := string.split_iter(section_str, "\n");
+        iter.next(lines); // Skip one line
+
+        m: Mapping;
+        for line: lines {
+            nums := split_into_ints(line);
+            defer delete(&nums);
+            
+            r := Rule.{
+                offset = nums[0] - nums[1],
+                start = nums[1],
+                end = nums[1] + nums[2]
+            };
+            m.rules << r;
+        }
+
+        linear_mappings << m;
+    }
+
+    iter.as_iter(seeds)
+    |> iter.map((x, [linear_mappings]) => apply_mappings(x, linear_mappings))
+    |> iter.fold(cast(u64) 0xffffffff, (x, y) => math.min(x, y))
+    |> println();
+
+    #if DO_PART_2 {
+        iter.as_iter(seeds)
+        |> group(2)
+        |> iter.flat_map(x => i64_range(x[0], x[0] + x[1]))
+        |> iter.map((x, [linear_mappings]) => apply_mappings(~~x, linear_mappings))
+        |> iter.fold(cast(u64) 0xffffffff, (x, y) => math.min(x, y))
+        |> println();
+    }
+}
