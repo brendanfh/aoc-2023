@@ -1,0 +1,54 @@
+use core {*}
+
+split_into_ints :: (s: str) -> Iterator(i64) {
+    return string.split_iter(s, " ")
+        ->filter(x => !string.empty(x))
+        ->map(x => conv.parse_int(x));
+}
+
+join_into_large_int :: (s: str) -> Iterator(i64) {
+    input: dyn_str = string.to_dyn_str(s);
+    defer delete(&input);
+
+    array.remove(&input, ' ');
+    
+    result := conv.parse_int(input);
+    return iter.single(result);
+}
+
+solve :: (race: Pair(i64, i64)) -> i64 {
+    a := cast(f64) race.first;
+    b := cast(f64) race.second;
+
+    s1 := (-a + math.sqrt(a * a - 4 * b)) * -0.5;
+    s2 := (-a - math.sqrt(a * a - 4 * b)) * -0.5;
+
+    g :: (x) => {
+        if math.ceil(x) == x {
+            return x + 1;
+        } else {
+            return math.ceil(x);
+        }
+    }
+
+    res := math.ceil(s2) - g(s1);
+    return cast(i64) res;
+}
+
+main :: () {
+    input := os.get_contents("inputs/day06.txt");
+
+    time_string, dist_string := string.bisect(input, '\n');
+    string.advance(&time_string, "Time:      ".count);
+    string.advance(&dist_string, "Distance:  ".count);
+
+    iter.zip(
+        // split_into_ints(time_string),
+        // split_into_ints(dist_string)
+        join_into_large_int(time_string),
+        join_into_large_int(dist_string),
+    )
+    |> iter.map(solve)
+    |> iter.fold(cast(i64) 1, (x, acc) => x * acc)
+    |> println();
+}
