@@ -1,6 +1,6 @@
 use core {*}
 
-DO_PART_2 :: false
+DO_PART_2 :: true
 
 Mapping :: struct {
     rules: [..] Rule;
@@ -12,6 +12,14 @@ Rule :: struct {
     end: i64;
 }
 
+i64_range :: struct {
+    lo, hi: i64;
+}
+
+#inject
+i64_range.zero :: (n: i64_range) => n.lo >= n.hi;
+
+
 split_into_ints :: (s: str) -> [] i64 {
     return string.split_iter(s, " ")->map(x => conv.parse_int(x))->collect();
 }
@@ -20,27 +28,59 @@ apply_mappings :: (n: i64, mappings: [] Mapping) -> i64 {
     res := n;
 
     for m: mappings {
-        for r: m.rules {
-            if r.start <= res && res < r.end {
-                res += r.offset;
-                continue continue;
-            }
-        }
+        res = apply_mapping(res, m);
     }
 
     return res;
 }
 
-i64_range :: (start, end: i64) -> Iterator(i64) {
-    return iter.generator(
-        &.{ end = end, i = start },
-        (ctx: $Ctx) -> (i64, bool) {
-            if ctx.i >= ctx.end do return .{}, false;
+apply_mappings_on_range :: (r: i64_range, mappings: [] Mapping) -> Iterator(i64_range) {
+    i := iter.single(r);
+    for m: mappings {
+        i = i |> iter.flat_map((r, [m]) => iter.as_iter(apply_mapping_on_range(r, m)))
+              |> iter.map(x => *x);
+    }
+    return i;
+}
 
-            defer ctx.i += 1;
-            return ctx.i, true;
+apply_mapping :: (n: i64, mapping: Mapping) -> i64 {
+    for r: mapping.rules {
+        if r.start <= n && n < r.end {
+            return n + r.offset;
         }
-    );
+    }
+
+    return n;
+}
+
+apply_mapping_on_range :: (r: i64_range, mappings: Mapping) -> [] i64_range {
+    out: [..] i64_range;
+
+    arr1 := array.make(.[r]);
+    arr2: [..] i64_range;
+
+    for rule: mappings.rules {
+        array.clear(&arr2);
+        array.concat(&arr2, arr1);
+        array.clear(&arr1);
+
+        for r: arr2 {
+            if r.hi <  rule.start { arr1 << r; continue; }
+            if r.lo >= rule.end   { arr1 << r; continue; }
+
+            l := i64_range.{r.lo, math.max(r.lo, rule.start)};
+            h := i64_range.{math.min(rule.end, r.hi), r.hi};
+            m := i64_range.{math.max(r.lo, rule.start) + rule.offset, math.min(rule.end, r.hi) + rule.offset};
+
+            if !m->zero() do out << m;
+            if !l->zero() do arr1 << l;
+            if !h->zero() do arr1 << h;
+        }
+    }
+
+    array.concat(&out, arr1);
+
+    return out;
 }
 
 group :: (it: Iterator($T), $N: i32) -> Iterator([N] T) {
@@ -99,9 +139,9 @@ main :: () {
     #if DO_PART_2 {
         iter.as_iter(seeds)
         |> group(2)
-        |> iter.flat_map(x => i64_range(x[0], x[0] + x[1]))
-        |> iter.map((x, [linear_mappings]) => apply_mappings(~~x, linear_mappings))
-        |> iter.fold(cast(u64) 0xffffffff, (x, y) => math.min(x, y))
+        |> iter.map(x => i64_range.{x[0], x[0] + x[1]})
+        |> iter.flat_map((x, [linear_mappings]) => apply_mappings_on_range(x, linear_mappings))
+        |> iter.fold(cast(u64) 0xffffffff, (x, y) => math.min(x.lo, y))
         |> println();
     }
 }
