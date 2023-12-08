@@ -1,0 +1,47 @@
+use core {*}
+
+traverse :: (start: str, is_end: (str) -> bool, mapping: &Map(str, Pair(str, str)), steps: [] u8) -> i64 {
+    count: i64;
+    current_step := 0;
+    current := start;
+    while !is_end(current) {
+        count += 1;
+
+        p := mapping->get(current)->unwrap();
+        current = switch steps[current_step] {
+            case 'L' => p.first
+            case 'R' => p.second
+        };
+        current_step += 1;
+        current_step %= steps.count;
+    }
+
+    return count;
+}
+
+main :: () {
+    input := os.get_contents("inputs/day08.txt");
+
+    steps: [] u8;
+    steps, input = string.bisect(input, "\n");
+    string.advance(input, 1); // Skip empty line.
+
+    mapping: Map(str, Pair(str, str));
+    for line: string.split_iter(input, "\n") {
+        start := line[0 .. 3];
+        left  := line[7 .. 10];
+        right := line[12 .. 15];
+
+        mapping->put(start, .{ left, right });
+    }
+
+    traverse("AAA", (s => s == "ZZZ"), &mapping, steps) |> println();
+
+    iter.as_iter(&mapping)
+        |> iter.filter(x => string.ends_with(x.key, "A"))
+        |> iter.map((x, [&mapping, steps]) =>
+            traverse(x.key, (s => string.ends_with(s, "Z")), mapping, steps)
+        )
+        |> iter.fold(cast(u64) 1, math.lcm)
+        |> println();
+}

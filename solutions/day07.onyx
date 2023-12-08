@@ -1,0 +1,110 @@
+use core {*}
+
+PART_2 :: true
+
+Hand :: [5] u8
+
+Rank :: union {
+    FiveOAK: void;
+    FourOAK: void;
+    FullHouse: void;
+    ThreeOAK: void;
+    TwoPair: void;
+    OnePair: void;
+    High: void;
+}
+
+Ranking :: struct {
+    rank: Rank;
+    hand: [5] u8;
+}
+
+card_to_value :: (card: u8) => switch card {
+    case 'A' => 14
+    case 'K' => 13
+    case 'Q' => 12
+    case 'J' => 11 if PART_2 else 1
+    case 'T' => 10
+    case #default => cast(i32) card - '0';
+}
+
+score_hand :: (hand: Hand) -> Rank {
+    card_count := make(Map(u8, i32));
+    defer delete(&card_count);
+
+    for card: hand {
+        *card_count->get_ptr_or_create(card) += 1;
+    }
+
+    sorted_cards := iter.as_iter(&card_count)
+        |> iter.map(kv => Pair.make(kv.key, kv.value))
+        |> iter.collect()
+        |> array.sort((x, y) => y.second - x.second);
+    defer delete(&sorted_cards);
+    
+    if sorted_cards[0].second == 5 do return .FiveOAK;
+    if sorted_cards[0].second == 4 do return .FourOAK;
+    if sorted_cards[0].second == 3 {
+        if sorted_cards[1].second == 2 do return .FullHouse;
+        else                           do return .ThreeOAK;
+    }
+
+    if sorted_cards[0].second == 2 {
+        if sorted_cards[1].second == 2 do return .TwoPair;
+        else                           do return .OnePair;
+    }
+
+    return .High;
+}
+
+
+Game :: struct {
+    r: Ranking;
+    b: i64;
+}
+
+compare_games :: (g1, g2: Game) -> i32 {
+    r1 := g1.r;
+    r2 := g2.r;
+
+    if r1.rank.tag != r2.rank.tag {
+        return cast(i32) r2.rank.tag - cast(i32) r1.rank.tag;
+    }
+
+    for i: 5 {
+        v1 := card_to_value(r1.hand[i]);
+        v2 := card_to_value(r2.hand[i]);
+        if v1 != v2 {
+            return v1 - v2;
+        }
+    }
+
+    return 0;
+}
+
+
+main :: () {
+    card_ranks: [..] Game;
+
+    for line: os.get_contents("inputs/day07.txt")
+            |> string.split_iter("\n") {
+        hand, bet_str := string.bisect(line, " ");
+
+        bet := conv.parse_int(bet_str);
+
+        card_ranks << .{
+            .{ score_hand(~~hand.data), cast([5] u8) hand.data },
+            bet
+        };
+    }
+
+    array.quicksort(card_ranks, compare_games);
+
+    iter.zip(
+        iter.counter(1),
+        iter.as_iter(card_ranks)
+    )
+    |> iter.map(x => ~~x.first * x.second.b)
+    |> iter.fold(cast(u64) 0, (x, y) => x + y)
+    |> println();
+}
