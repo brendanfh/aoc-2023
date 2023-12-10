@@ -1,0 +1,42 @@
+use core {*}
+
+find :: (nums: [] i64, $final_part: Code) -> i64 {
+    next := make([] i64, nums.length - 1);
+    defer delete(&next);
+
+    for i: next.length {
+        next[i] = nums[i + 1] - nums[i];
+    }
+
+    if slice.every(next, [x](x == 0)) {
+        return nums[0];
+
+    } else {
+        res := find(next, final_part);
+        return #unquote final_part(nums, res);
+    }
+}
+
+find_next :: #solidify find {
+    final_part = [arr, res](arr[arr.length - 1] + res)
+}
+
+find_prev :: #solidify find {
+    final_part = [arr, res](arr[0] - res)
+}
+
+process_line :: (s: str, mapping: ([] i64) -> i64) -> i64 {
+    nums := string.split_iter(s, " ")
+         |> iter.map(x => conv.parse_int(x))
+         |> iter.collect();
+    
+    return mapping(nums);
+}
+
+main :: () {
+    os.get_contents("inputs/day09.txt")
+    |> string.split_iter("\n")
+    |> iter.map(x => process_line(x, find_prev))
+    |> iter.fold(cast(i64) 0, (x, y) => x + y)
+    |> println();
+}
