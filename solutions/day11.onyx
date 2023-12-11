@@ -2,7 +2,7 @@ use core {*}
 
 SCALE :: cast(i64) 999999
 
-expand :: (board: [..] [..] u8, expand_rows: &[..] i32, expand_cols: &[..] i32) {
+expand :: (board: [] [] u8, expand_rows: &[..] i32, expand_cols: &[..] i32) {
     for i: board.length {
         if slice.every(board.data[i], [x](x == '.')) {
             array.push(expand_rows, i);
@@ -24,7 +24,7 @@ manhattan_dist :: (a, b: Pos) -> i32 {
     return math.abs(a.x - b.x) + math.abs(a.y - b.y);
 }
 
-galaxy_positions :: (board: [..] [..] u8) -> Iterator(Pos) {
+galaxy_positions :: (board: [] [] u8) -> Iterator(Pos) {
     return iter.zip(
         iter.prod(0 .. board[0].length, iter.counter()),
         iter.flat_map(iter.as_iter(board), x => iter.as_iter(x))
@@ -36,7 +36,6 @@ galaxy_positions :: (board: [..] [..] u8) -> Iterator(Pos) {
 main :: () {
     board := os.get_contents("inputs/day11.txt")
         |> string.split_iter("\n")
-        |> iter.map(x => array.make(x))
         |> iter.collect();
 
     expand_rows, expand_cols: [..] i32;
