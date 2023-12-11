@@ -23,9 +23,25 @@ card_to_value :: (card: u8) => switch card {
     case 'A' => 14
     case 'K' => 13
     case 'Q' => 12
-    case 'J' => 11 if PART_2 else 1
+    case 'J' => 1 if PART_2 else 11
     case 'T' => 10
     case #default => cast(i32) card - '0';
+}
+
+score_helper :: macro (v: i32) -> Rank {
+    if v == 5 do return .FiveOAK;
+    if v == 4 do return .FourOAK;
+    if v == 3 {
+        if sorted_cards[1].second == 2 do return .FullHouse;
+        else                           do return .ThreeOAK;
+    }
+
+    if v == 2 {
+        if sorted_cards[1].second == 2 do return .TwoPair;
+        else                           do return .OnePair;
+    }
+
+    return .High;
 }
 
 score_hand :: (hand: Hand) -> Rank {
@@ -36,25 +52,23 @@ score_hand :: (hand: Hand) -> Rank {
         *card_count->get_ptr_or_create(card) += 1;
     }
 
-    sorted_cards := iter.as_iter(&card_count)
+    card_iter := iter.as_iter(&card_count);
+    #if PART_2 {
+        card_iter = iter.filter(card_iter, kv => kv.key != 'J');
+    }
+
+    sorted_cards := card_iter
         |> iter.map(kv => Pair.make(kv.key, kv.value))
         |> iter.collect()
         |> array.sort((x, y) => y.second - x.second);
     defer delete(&sorted_cards);
-    
-    if sorted_cards[0].second == 5 do return .FiveOAK;
-    if sorted_cards[0].second == 4 do return .FourOAK;
-    if sorted_cards[0].second == 3 {
-        if sorted_cards[1].second == 2 do return .FullHouse;
-        else                           do return .ThreeOAK;
+
+    v := sorted_cards[0].second;
+    #if PART_2 {
+        v += card_count['J'] ?? 0;
     }
 
-    if sorted_cards[0].second == 2 {
-        if sorted_cards[1].second == 2 do return .TwoPair;
-        else                           do return .OnePair;
-    }
-
-    return .High;
+    return score_helper(v);
 }
 
 
