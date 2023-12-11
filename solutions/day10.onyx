@@ -1,0 +1,142 @@
+use core {*}
+
+Pos :: [2] i32
+
+neg :: (arr: [$N] $T) -> [N] T where N <= 4 {
+    out := arr;
+    for& out do *it = -*it;
+    return out;
+}
+
+find :: (board: [] [] u8, needle: u8) -> ? Pos {
+    for y: board.length {
+        for x: board[y].length {
+            if board[y][x] == needle {
+                return i32.[x, y];
+            }
+        }
+    }
+
+    return .None;
+}
+
+infer_S :: (board: [] [] u8, pos: Pos) {
+    positions: [..] Pos;
+
+    if slice.some(possible_dirs->get(board[pos.y][pos.x - 1])->unwrap(), [x](x == .[1, 0])) {
+        positions << .[-1, 0];
+    }
+    if slice.some(possible_dirs->get(board[pos.y][pos.x + 1])->unwrap(), [x](x == .[-1, 0])) {
+        positions << .[1, 0];
+    }
+    if slice.some(possible_dirs->get(board[pos.y - 1][pos.x])->unwrap(), [x](x == .[0, 1])) {
+        positions << .[0, -1];
+    }
+    if slice.some(possible_dirs->get(board[pos.y + 1][pos.x])->unwrap(), [x](x == .[0, -1])) {
+        positions << .[0, 1];
+    }
+
+    p: [2] Pos = cast([2] Pos) positions.data;
+
+    cell := iter.as_iter(possible_dirs)
+        |> iter.filter((x, [p]) => x.value == p)
+        |> iter.map(x => x.key)
+        |> iter.next();
+    
+    printf("Solved for S to be {}\n", cell);
+    board[pos.y][pos.x] = cell;
+}
+
+
+possible_dirs: Map(u8, [2] Pos);
+#init () {
+    possible_dirs = map.literal(u8, [2] Pos, .[
+        .{ '|', .[i32.[0, -1], i32.[0, 1]] },
+        .{ '-', .[i32.[-1, 0], i32.[1, 0]] },
+        .{ 'J', .[i32.[-1, 0], i32.[0, -1]] },
+        .{ 'L', .[i32.[1, 0], i32.[0, -1]] },
+        .{ 'F', .[i32.[1, 0], i32.[0, 1]] },
+        .{ '7', .[i32.[-1, 0], i32.[0, 1]] },
+        .{ '.', .[i32.[0,0], i32.[0,0]]}
+    ]);
+}
+
+lookup :: (board: [] [] u8, pos: Pos) -> ? u8 {
+    if pos.x < 0 || pos.y < 0 || pos.x >= board[0].length || pos.y >= board.length do return .None;
+
+    return board[pos.y][pos.x];
+}
+
+FloodQueueType :: struct {
+    pos: Pos;
+    dist: i32;
+}
+
+flood :: (board: [] [] u8, min_dist: [] [] u32) {
+    queue := heap.make(
+        FloodQueueType,
+        (a, b) => a.dist - b.dist
+    );
+
+    s_pos := find(board, 'S')->unwrap();
+    infer_S(board, s_pos);
+
+    queue << .{ s_pos, 1 };
+    while queue.data.count > 0 {
+        top := heap.remove_top(&queue);
+        min_dist[top.pos.y][top.pos.x] = top.dist;
+
+        cell := board[top.pos.y][top.pos.x];
+        possible := possible_dirs->get(cell)->unwrap();
+        for dir: possible {
+            target := top.pos + dir;
+            maybe_neighbor := lookup(board, target);
+            if !maybe_neighbor do continue;
+
+            if min_dist[target.y][target.x] > 0 {
+                if min_dist[target.y][target.x] < top.dist + 1 {
+                    continue;
+                }
+            }
+
+            neighbor := maybe_neighbor->unwrap();
+            expected := neg(dir);
+
+            if slice.some(possible_dirs->get(neighbor)->unwrap(), [x](x == expected)) {
+                heap.insert(&queue, .{ target, top.dist + 1 });
+            }
+        }
+    }
+}
+
+clear_not_part_of_loop :: (board: [] [] u8, min_dist: [] [] u32) {
+    for y: min_dist.length {
+        for x: min_dist[y].length {
+            if min_dist[y][x] == 0 {
+                board[y][x] = '.';
+            }
+        }
+    }
+}
+
+main :: () {
+    board := os.get_contents("inputs/day10.txt")
+            |> string.split_iter("\n")
+            |> iter.collect();
+    
+    min_dist := make([] [] u32, board.length);
+    for board.length {
+        min_dist[it] = make([] u32, board[it].length);
+    }
+
+    flood(board, min_dist);
+    clear_not_part_of_loop(board, min_dist);
+
+    iter.as_iter(min_dist)
+    |> iter.flat_map(x => iter.as_iter(x))
+    |> iter.fold(0, (x, y) => {
+        if x == 0 do return y;
+        return math.max(x - 1, y);
+    })
+    |> println();
+}
