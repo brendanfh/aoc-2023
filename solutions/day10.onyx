@@ -134,9 +134,6 @@ main :: () {
 
     iter.as_iter(min_dist)
     |> iter.flat_map(x => iter.as_iter(x))
-    |> iter.fold(0, (x, y) => {
-        if x == 0 do return y;
-        return math.max(x - 1, y);
-    })
+    |> iter.fold(-1, (x, y) => math.max(cast(i32) (x - 1), y))
     |> println();
 }

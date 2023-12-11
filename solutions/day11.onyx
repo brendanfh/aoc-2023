@@ -1,0 +1,61 @@
+use core {*}
+
+expand :: (board: &[..] [..] u8) {
+    while i := 0; i < board.length {
+        defer i += 1;
+
+        if slice.every(board.data[i], [x](x == '.')) {
+            new_row := array.make(board.data[i]);
+            array.insert(board, i, new_row);
+            i += 1;
+        }
+    }
+
+    while i := 0; i < board.data[0].length {
+        defer i += 1;
+
+        duplicate := iter.as_iter(*board)
+            |> iter.every((row, [i]) => row[i] == '.');
+        
+        if duplicate {
+            for& row: *board {
+                array.insert(row, i, '.');
+            }
+            i += 1;
+        }
+    }
+}
+
+Pos :: [2] i32
+
+manhattan_dist :: (a, b: Pos) -> i32 {
+    return math.abs(a.x - b.x) + math.abs(a.y - b.y);
+}
+
+galaxy_positions :: (board: [..] [..] u8) -> Iterator(Pos) {
+    return iter.zip(
+        iter.prod(0 .. board[0].length, iter.counter()),
+        iter.flat_map(iter.as_iter(board), x => iter.as_iter(x))
+    )
+    |> iter.filter(x => x.second == '#')
+    |> iter.map(x => i32.[x.first.first, x.first.second]);
+}
+
+main :: () {
+    board := os.get_contents("inputs/day11.txt")
+        |> string.split_iter("\n")
+        |> iter.map(x => array.make(x))
+        |> iter.collect();
+
+    expand(&board);
+    galaxies := galaxy_positions(board) |> iter.collect();
+
+    sum := 0;
+    for i: 0 .. galaxies.length {
+        for j: i+1 .. galaxies.length {
+            sum += manhattan_dist(galaxies[i], galaxies[j]);
+        }
+    }
+
+    println(sum);
+}
