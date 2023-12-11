@@ -1,27 +1,19 @@
 use core {*}
 
-expand :: (board: &[..] [..] u8) {
-    while i := 0; i < board.length {
-        defer i += 1;
+SCALE :: cast(i64) 999999
 
+expand :: (board: [..] [..] u8, expand_rows: &[..] i32, expand_cols: &[..] i32) {
+    for i: board.length {
         if slice.every(board.data[i], [x](x == '.')) {
-            new_row := array.make(board.data[i]);
-            array.insert(board, i, new_row);
-            i += 1;
+            array.push(expand_rows, i);
         }
     }
 
-    while i := 0; i < board.data[0].length {
-        defer i += 1;
-
-        duplicate := iter.as_iter(*board)
-            |> iter.every((row, [i]) => row[i] == '.');
+    for i: board[0].length {
+        duplicate := iter.as_iter(board) |> iter.every((row, [i]) => row[i] == '.');
         
         if duplicate {
-            for& row: *board {
-                array.insert(row, i, '.');
-            }
-            i += 1;
+            array.push(expand_cols, i);
         }
     }
 }
@@ -47,13 +39,28 @@ main :: () {
         |> iter.map(x => array.make(x))
         |> iter.collect();
 
-    expand(&board);
+    expand_rows, expand_cols: [..] i32;
+    expand(board, &expand_rows, &expand_cols);
     galaxies := galaxy_positions(board) |> iter.collect();
 
-    sum := 0;
+    sum: i64;
     for i: 0 .. galaxies.length {
         for j: i+1 .. galaxies.length {
-            sum += manhattan_dist(galaxies[i], galaxies[j]);
+            alloc.clear_temp_allocator();
+            
+            gi := galaxies[i];
+            gj := galaxies[j];
+
+            min_x := math.min(gi.x, gj.x);
+            min_y := math.min(gi.y, gj.y);
+            max_x := math.max(gi.x, gj.x);
+            max_y := math.max(gi.y, gj.y);
+
+            ec := iter.as_iter(expand_cols) |> iter.count((x, [min_x, max_x]) => min_x <= x && x < max_x);
+            er := iter.as_iter(expand_rows) |> iter.count((y, [min_y, max_y]) => min_y <= y && y < max_y);
+
+            dist := cast(i64) manhattan_dist(gi, gj) + cast(i64) ec * SCALE + cast(i64) er * SCALE;
+            sum += dist;
         }
     }
 
