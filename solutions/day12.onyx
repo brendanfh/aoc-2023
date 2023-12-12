@@ -1,0 +1,78 @@
+use core {*}
+
+permutation_generator :: (source: str, expected_sum: i32) -> Iterator(str) {
+    indexes := string.indexes_of(source, '?');
+    damaged_count := iter.as_iter(source) |> iter.count(x => x == '#');
+
+    return iter.generator(
+        &.{
+            i = -1,
+            max = 1 << indexes.length,
+            expected_sum = expected_sum - damaged_count,
+            indexes = indexes,
+            original_source = source
+        },
+        c => {
+            copy := string.temp_copy(c.original_source);
+            
+            c.i += 1;
+            while math.popcnt(c.i) != c.expected_sum && c.i < c.max {
+                c.i += 1;
+            }
+
+            if c.i == c.max do return "", false;
+
+            for i: c.indexes.length {
+                is_damaged := (c.i & (1 << i)) != 0;
+                copy[c.indexes[i]] = '#' if is_damaged else '.';
+            }
+
+            return copy, true;
+        }
+    );
+}
+
+matches :: (s: str, nums: [] i64) -> bool {
+    return iter.zip(
+        iter.as_iter(nums),
+        string.split_iter(s, '.')
+        |> iter.filter(x => !string.empty(x))
+        |> iter.map(x => x.length)
+    )
+    |> iter.map(p => p.first == ~~p.second)
+    |> iter.fold(true, (x, y) => x && y);
+}
+
+main :: () {
+    os.get_contents("inputs/day12.txt")
+    |> string.split_iter("\n")
+    |> iter.map(line => {
+        pattern, nums_str := string.bisect(line, ' ');
+        nums := string.split_iter(nums_str, ',') |> iter.map(x => conv.parse_int(x)) |> iter.collect();
+        total := array.sum(nums);
+        return permutation_generator(pattern, ~~total) |> iter.count((x, [nums]) => matches(x, nums));
+    })
+    |> iter.fold(0, (x, y) => x + y)
+    |> println();
+}
+
+
+#inject
+iter.consume :: macro (i: Iterator($T), body: Code) {
+    for i {
+        #unquote body(it);
+    }
+}
+
+#doc "Caller is expected to free the result."
+#inject
+string.indexes_of :: (s: [] u8, needle: u8) -> [] i32 {
+    out: [..] i32;
+    for i: s.length {
+        if s[i] == needle {
+            out << i;
+        }
+    }
+
+    return out;
+}
